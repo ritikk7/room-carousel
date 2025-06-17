@@ -4,12 +4,13 @@ import { Plus } from '@phosphor-icons/react';
 interface AddRoomButtonProps {
   onClick: () => void;
   isRoomsMode: boolean;
+  isLastCardActive: boolean;
 }
 
-export const AddRoomButton = ({ onClick, isRoomsMode }: AddRoomButtonProps) => {
+export const AddRoomButton = ({ onClick, isRoomsMode, isLastCardActive }: AddRoomButtonProps) => {
   return (
     <AnimatePresence>
-      {isRoomsMode && (
+      {isRoomsMode && isLastCardActive && (
         <motion.button
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}

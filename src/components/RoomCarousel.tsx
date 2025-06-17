@@ -272,32 +272,6 @@ export const RoomCarousel = ({
             </AnimatePresence>
           </motion.div>
         ))}
-        
-        {/* Add Room button inline with carousel */}
-        {showAdd && (
-          <motion.div
-            className="shrink-0 flex items-center justify-center"
-            style={{
-              width: windowWidth >= 768 ? '60vw' : '70vw',
-              height: '70vh',
-            }}
-          >
-            {canAddMore ? (
-              <button
-                onClick={onAddRoom}
-                className="w-16 h-16 rounded-full bg-transparent border-2 border-gray-300 text-gray-900 flex items-center justify-center text-3xl shadow-lg hover:bg-gray-100 hover:border-gray-400 transition"
-                aria-label="Add Room"
-              >
-                +
-              </button>
-            ) : (
-              <div className="text-center text-gray-400">
-                <div className="text-sm">No more rooms</div>
-                <div className="text-xs">available to add</div>
-              </div>
-            )}
-          </motion.div>
-        )}
       </motion.div>
     </div>
   );

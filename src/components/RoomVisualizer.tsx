@@ -52,6 +52,7 @@ export const RoomVisualizer = () => {
         <AddRoomButton
           onClick={addRoom}
           isRoomsMode={isRoomsMode}
+          isLastCardActive={activeIndex === roomList.length - 1}
         />
       </div>
     </div>
