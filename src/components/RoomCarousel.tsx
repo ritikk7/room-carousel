@@ -1,31 +1,84 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, useMotionValue, useAnimationControls, PanInfo, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { SignOut, House, SquaresFour, ShareFat, Check, Heart, Copy } from '@phosphor-icons/react';
-import { getNextAvailableRoom } from '@/utils/roomUtils';
+import { SignOut, House, SquaresFour, ShareFat, Check, Heart, Copy, IconProps, IconWeight } from '@phosphor-icons/react';
 
 interface RoomCarouselProps {
   rooms: string[];
   activeIndex: number;
   setActiveIndex: (index: number) => void;
   isRoomsMode: boolean;
-  onAddRoom?: () => void;
   onChangeRoom?: () => void;
   onToggleRoomsMode?: () => void;
 }
 
+// Constants
 const CARD_WIDTH_ROOMS = 0.7; // 70vw
 const CARD_WIDTH_ROOMS_MD = 0.6; // 60vw
 const CARD_WIDTH_SINGLE = 0.9; // 90vw
 const CARD_WIDTH_SINGLE_MD = 0.8; // 80vw
 const GAP = 48; // px, gap-12
+const DRAG_VELOCITY_THRESHOLD = 300;
+const DRAG_OFFSET_THRESHOLD = 0.25; // 1/4 of card width
+const WHEEL_SNAP_DELAY = 120;
+
+// Button configuration
+const TOP_BAR_BUTTONS = [
+  { icon: SignOut, label: 'EXIT', onClick: undefined },
+  { icon: House, label: 'CHANGE ROOM', onClick: 'onChangeRoom' },
+  { icon: SquaresFour, label: 'ROOMS', onClick: 'onToggleRoomsMode' },
+  { icon: ShareFat, label: 'SHARE', onClick: undefined }
+] as const;
+
+const CARD_ACTION_BUTTONS = [
+  { icon: ShareFat, label: 'SHARE' },
+  { icon: Heart, label: 'FAVORITE' },
+  { icon: Copy, label: 'DUPLICATE' }
+] as const;
+
+// Reusable Button Component
+interface ActionButtonProps {
+  icon: React.ComponentType<IconProps>;
+  label: string;
+  onClick?: () => void;
+  size?: 'sm' | 'md';
+  className?: string;
+}
+
+const ActionButton = ({ icon: Icon, label, onClick, size = 'md', className = '' }: ActionButtonProps) => {
+  const baseClasses = "flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group";
+  const sizeClasses = size === 'sm' ? 'text-xs' : 'text-sm font-medium';
+  
+  return (
+    <button 
+      onClick={onClick}
+      className={`${baseClasses} ${sizeClasses} ${className}`}
+    >
+      <Icon 
+        size={size === 'sm' ? 16 : 20} 
+        weight={"bold" as IconWeight}
+        className="text-white group-hover:text-gray-900" 
+      />
+      {label}
+    </button>
+  );
+};
+
+// Empty State Component
+const EmptyState = ({ isRoomsMode }: { isRoomsMode: boolean }) => (
+  <div className={`${isRoomsMode ? 'w-full h-full flex items-center justify-center' : 'fixed inset-0 w-screen h-screen bg-black flex items-center justify-center'}`}>
+    <div className={`text-center ${isRoomsMode ? 'text-gray-400' : 'text-white'}`}>
+      <div className="text-lg">No rooms available</div>
+      <div className={`text-sm ${isRoomsMode ? 'text-gray-400' : 'text-gray-400'}`}>Add some rooms to get started</div>
+    </div>
+  </div>
+);
 
 export const RoomCarousel = ({
   rooms,
   activeIndex,
   setActiveIndex,
   isRoomsMode,
-  onAddRoom,
   onChangeRoom,
   onToggleRoomsMode
 }: RoomCarouselProps) => {
@@ -49,14 +102,14 @@ export const RoomCarousel = ({
   }, [isDragging]);
 
   // Responsive card width based on mode
-  const getCardWidth = () => {
+  const getCardWidth = useCallback(() => {
     if (typeof window === 'undefined') return 0;
     if (isRoomsMode) {
       return window.innerWidth * (window.innerWidth >= 768 ? CARD_WIDTH_ROOMS_MD : CARD_WIDTH_ROOMS);
     } else {
       return window.innerWidth * (window.innerWidth >= 768 ? CARD_WIDTH_SINGLE_MD : CARD_WIDTH_SINGLE);
     }
-  };
+  }, [isRoomsMode]);
 
   // Measure card width, center offset, and max drag
   const recalc = useCallback(() => {
@@ -71,7 +124,7 @@ export const RoomCarousel = ({
       controls.set({ x: -activeIndex * (cardW + GAP) + center });
       x.set(-activeIndex * (cardW + GAP) + center);
     }
-  }, [rooms.length, activeIndex, controls, x, isRoomsMode]);
+  }, [rooms.length, activeIndex, controls, x, getCardWidth]);
 
   useEffect(() => {
     recalc();
@@ -96,8 +149,8 @@ export const RoomCarousel = ({
     const velocity = info.velocity.x;
     const offset = info.offset.x;
     let next = activeIndex;
-    if (velocity < -300 || offset < -cardFull / 4) next += 1;
-    if (velocity > 300 || offset > cardFull / 4) next -= 1;
+    if (velocity < -DRAG_VELOCITY_THRESHOLD || offset < -cardFull * DRAG_OFFSET_THRESHOLD) next += 1;
+    if (velocity > DRAG_VELOCITY_THRESHOLD || offset > cardFull * DRAG_OFFSET_THRESHOLD) next -= 1;
     snapTo(next);
     isDragging.set(false);
   };
@@ -112,7 +165,7 @@ export const RoomCarousel = ({
     clearTimeout((handleWheel as { _t?: NodeJS.Timeout })._t);
     (handleWheel as { _t?: NodeJS.Timeout })._t = setTimeout(() => {
       snapTo(Math.round(Math.abs(newX - centerOffset) / cardFull));
-    }, 120);
+    }, WHEEL_SNAP_DELAY);
   };
 
   // Card style (blur/scale/opacity)
@@ -127,59 +180,42 @@ export const RoomCarousel = ({
     };
   };
 
-  // Only show plus button in rooms mode
-  const showAdd = isRoomsMode && typeof onAddRoom === 'function';
-  const canAddMore = getNextAvailableRoom(rooms) !== null;
-
   // Top bar with icons and hover styling
   const renderTopBar = () => (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 flex gap-3 z-30 px-4 py-2 rounded-xl shadow-lg">
-      {!isRoomsMode && (
+      {!isRoomsMode ? (
         <>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-sm font-medium shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
-            <SignOut size={20} weight="bold" className="group-hover:text-gray-900 text-white" />
-            EXIT
-          </button>
-          <button onClick={onChangeRoom} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-sm font-medium shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
-            <House size={20} weight="bold" className="group-hover:text-gray-900 text-white" />
-            CHANGE ROOM
-          </button>
-          <button
-            onClick={onToggleRoomsMode}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-sm font-medium shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group"
-          >
-            <SquaresFour size={20} weight="bold" className="group-hover:text-gray-900 text-white" />
-            ROOMS
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-sm font-medium shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
-            <ShareFat size={20} weight="bold" className="group-hover:text-gray-900 text-white" />
-            SHARE
-          </button>
+          {TOP_BAR_BUTTONS.map(({ icon, label, onClick }) => (
+            <ActionButton
+              key={label}
+              icon={icon}
+              label={label}
+              onClick={onClick === 'onChangeRoom' ? onChangeRoom : onClick === 'onToggleRoomsMode' ? onToggleRoomsMode : undefined}
+            />
+          ))}
         </>
-      )}
-      {isRoomsMode && (
-        <button onClick={onToggleRoomsMode} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-sm font-medium shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
-          <Check size={20} weight="bold" className="group-hover:text-gray-900 text-white" />
-          DONE
-        </button>
+      ) : (
+        <ActionButton
+          icon={Check}
+          label="DONE"
+          onClick={onToggleRoomsMode}
+        />
       )}
     </div>
   );
 
+  // Handle empty rooms
+  if (rooms.length === 0) {
+    return (
+      <>
+        <EmptyState isRoomsMode={isRoomsMode} />
+        {renderTopBar()}
+      </>
+    );
+  }
+
   if (!isRoomsMode) {
     // Fullscreen image, no border, no peeking, no rounded corners
-    if (rooms.length === 0) {
-      return (
-        <div className="fixed inset-0 w-screen h-screen bg-black flex items-center justify-center">
-          <div className="text-white text-center">
-            <div className="text-lg">No rooms available</div>
-            <div className="text-sm text-gray-400">Add some rooms to get started</div>
-          </div>
-          {renderTopBar()}
-        </div>
-      );
-    }
-    
     const boundedIndex = Math.min(Math.max(activeIndex, 0), rooms.length - 1);
     return (
       <div className="fixed inset-0 w-screen h-screen bg-black">
@@ -192,19 +228,6 @@ export const RoomCarousel = ({
           priority
         />
         {renderTopBar()}
-      </div>
-    );
-  }
-
-  // Handle empty rooms list in rooms mode
-  if (rooms.length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        {renderTopBar()}
-        <div className="text-center text-gray-400">
-          <div className="text-lg">No rooms available</div>
-          <div className="text-sm">Add some rooms to get started</div>
-        </div>
       </div>
     );
   }
@@ -255,18 +278,14 @@ export const RoomCarousel = ({
                   transition={{ duration: 0.2 }}
                   className="absolute bottom-[-4rem] right-4 flex gap-2 z-10"
                 >
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
-                    <ShareFat size={16} weight="bold" className="text-white group-hover:text-gray-900" />
-                    SHARE
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
-                    <Heart size={16} weight="bold" className="text-white group-hover:text-gray-900" />
-                    FAVORITE
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
-                    <Copy size={16} weight="bold" className="text-white group-hover:text-gray-900" />
-                    DUPLICATE
-                  </button>
+                  {CARD_ACTION_BUTTONS.map(({ icon, label }) => (
+                    <ActionButton
+                      key={label}
+                      icon={icon}
+                      label={label}
+                      size="sm"
+                    />
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -275,4 +294,4 @@ export const RoomCarousel = ({
       </motion.div>
     </div>
   );
-} 
+}; 

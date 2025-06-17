@@ -45,7 +45,6 @@ export const RoomVisualizer = () => {
             isRoomsMode={isRoomsMode}
             onToggleRoomsMode={() => setIsRoomsMode(!isRoomsMode)}
             onChangeRoom={() => setActiveIndex((prev) => (prev + 1) % roomList.length)}
-            onAddRoom={addRoom}
           />
         </div>
 
