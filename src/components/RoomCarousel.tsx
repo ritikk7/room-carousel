@@ -158,8 +158,8 @@ export const RoomCarousel = ({
         </>
       )}
       {isRoomsMode && (
-        <button onClick={onToggleRoomsMode} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-200 text-gray-900 text-sm font-semibold shadow border border-gray-300">
-          <Check size={20} weight="bold" className="text-gray-900" />
+        <button onClick={onToggleRoomsMode} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-sm font-medium shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
+          <Check size={20} weight="bold" className="group-hover:text-gray-900 text-white" />
           DONE
         </button>
       )}
@@ -255,15 +255,15 @@ export const RoomCarousel = ({
                   transition={{ duration: 0.2 }}
                   className="absolute bottom-[-4rem] right-4 flex gap-2 z-10"
                 >
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300">
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
                     <ShareFat size={16} weight="bold" className="text-white group-hover:text-gray-900" />
                     SHARE
                   </button>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300">
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
                     <Heart size={16} weight="bold" className="text-white group-hover:text-gray-900" />
                     FAVORITE
                   </button>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300">
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#444] text-white text-xs shadow transition hover:bg-gray-200 hover:text-gray-900 hover:font-semibold hover:border hover:border-gray-300 group">
                     <Copy size={16} weight="bold" className="text-white group-hover:text-gray-900" />
                     DUPLICATE
                   </button>
